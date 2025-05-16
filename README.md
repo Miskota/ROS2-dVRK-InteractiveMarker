@@ -27,13 +27,15 @@ An interactive marker that can be picked up and moved around with the da Vinci R
 - Processes the information
 - Publishes the coordinates (/PSM1/measured_cp, /PSM1/jaw/measured_js)
 
+
 ## Controller Input Node
 - Connect controller using pygame
-- Sends controller values if anything is moved (/controller_cmd)
+- Sends controller values (/controller_cmd)
+- Doesn't publish if the controller is in 'idle' state (No inputs)
 
 ## Interactive Marker
 - Receives information (/PSM1/measured_cp, /PSM1/jaw/measured_js)
-- If the jaws are closed the marker becomes grabbed (Color changes from green to red)
+- If the jaws are closed (jaw_position < 0.05) the marker becomes grabbed (Color changes from green to red)
 - If the jaws are open the marker becomes free (Color changes from red to green)
 - While the marker is grabbed it follows the TCP coordinates
 - Sends marker information to RViz (dummy_target_marker)

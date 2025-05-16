@@ -58,16 +58,33 @@ class InteractiveMarker(Node):
 
 
 
+    #def cb_tcp(self, msg):
+    #    self.tcp_pos = np.array([
+    #        msg.pose.position.x,
+    #        msg.pose.position.y,
+    #        msg.pose.position.z
+    #    ])
+    #
+    #    # Different coordinates
+    #    self.tcp_frame = msg.header.frame_id
+    #    self.get_logger().info(f'TCP frame: {self.tcp_frame}')
+    
     def cb_tcp(self, msg):
         self.tcp_pos = np.array([
             msg.pose.position.x,
             msg.pose.position.y,
             msg.pose.position.z
         ])
-
-        # Different coordinates
         self.tcp_frame = msg.header.frame_id
-        self.get_logger().info(f'TCP frame: {self.tcp_frame}')
+
+        # Initialize marker position on first TCP message
+        if self.position is None:
+            self.position = np.copy(self.tcp_pos)
+            self.get_logger().info(f"Marker initialized at TCP position: {self.position}")
+
+        # If marker is attached, move it with the TCP
+        if self.marker_attached:
+            self.position = self.tcp_pos + self.marker_offset
     
     '''
     def cb_tcp(self, msg):
@@ -76,7 +93,7 @@ class InteractiveMarker(Node):
         try:
             # Lookup transform from TCP frame to 'camera'
             transform = self.tf_buffer.lookup_transform(
-                'world',  # target frame
+                'camera',  # target frame
                 msg.header.frame_id,  # source frame (likely 'PSM1_psm_base_link')
                 rclpy.time.Time(),
                 timeout=rclpy.duration.Duration(seconds=1.0)
@@ -90,17 +107,17 @@ class InteractiveMarker(Node):
                 transformed.pose.position.y,
                 transformed.pose.position.z
             ])
-            self.tcp_frame = 'world'  # Now it's in camera frame
+            self.tcp_frame = 'camera'  # Now it's in camera frame
 
             if self.position is None:
                 self.position = np.copy(self.tcp_pos)
-                self.get_logger().info(f"Marker spawned at TCP position: {self.position}")
+                self.get_logger().info(f"Marker initialized at TCP position: {self.position}")
 
 
         except Exception as e:
             self.get_logger().warn(f"TF transform failed: {e}")
             self.tcp_pos = None
-        '''
+    '''
 
     def cb_jaw(self, msg):
         self.jaw_position = msg.position[0]
@@ -125,8 +142,9 @@ class InteractiveMarker(Node):
         # Calculate the distance between the TCP and Marker
         dist = np.linalg.norm(self.position - self.tcp_pos)
 
-        # Marker is attached if close
-        if dist < 10.0 and jaw_closed and not self.marker_attached:
+        # Marker is attached if it's close
+        # dist is in meters
+        if dist < 0.01 and jaw_closed and not self.marker_attached:
 
             self.marker_attached = True
             self.marker_offset = self.position - self.tcp_pos
@@ -144,8 +162,10 @@ class InteractiveMarker(Node):
         
         marker = Marker()
         #marker.header.frame_id = 'PSM1_base'
-        marker.header.frame_id = 'camera'
+        #marker.header.frame_id = 'camera'
+        marker.header.frame_id = 'PSM1_psm_base_link'
         #marker.header.frame_id = self.tcp_frame
+        #marker.header.frame_id = 'world'
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = 'dvrk_viz'
         marker.id = 0
@@ -184,6 +204,8 @@ def main(args = None):
 
     initial_pos = [0.00687728, 0.06412506, 0.27155235]
     marker_node = InteractiveMarker(initial_pos)
+
+    #marker_node = InteractiveMarker()
 
     rclpy.spin(marker_node)
     

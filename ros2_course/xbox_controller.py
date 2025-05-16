@@ -48,7 +48,7 @@ class XBoxController(Node):
         left_x = apply_deadzone(-self.joystick.get_axis(0))
         left_y = apply_deadzone(self.joystick.get_axis(1))
         right_y = apply_deadzone(-self.joystick.get_axis(4))
-        left_trigger = self.joystick.get_axis(2)
+        left_trigger = -self.joystick.get_axis(2)
 
         if (left_x == 0.0 and left_y == 0.0 and right_y == 0.0 and left_trigger == -1.0):
             return

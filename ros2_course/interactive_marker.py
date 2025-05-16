@@ -8,14 +8,22 @@ from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
 from visualization_msgs.msg import Marker
 import numpy as np
-
+import tf2_ros
+import tf2_geometry_msgs
 
 class InteractiveMarker(Node):
 
     def __init__(self, initial_pos):
         super().__init__('interactive_marker')
 
-        self.position = np.array(initial_pos)
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
+        
+        
+        #self.position = np.array(initial_pos)
+        self.position = None
+        
         self.tcp_pos = None
         self.jaw_pos = None
         self.marker_attached = False
@@ -60,7 +68,39 @@ class InteractiveMarker(Node):
         # Different coordinates
         self.tcp_frame = msg.header.frame_id
         self.get_logger().info(f'TCP frame: {self.tcp_frame}')
+    
+    '''
+    def cb_tcp(self, msg):
+        
 
+        try:
+            # Lookup transform from TCP frame to 'camera'
+            transform = self.tf_buffer.lookup_transform(
+                'world',  # target frame
+                msg.header.frame_id,  # source frame (likely 'PSM1_psm_base_link')
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=1.0)
+            )
+
+            # Transform the pose
+            transformed = tf2_geometry_msgs.do_transform_pose(msg, transform)
+
+            self.tcp_pos = np.array([
+                transformed.pose.position.x,
+                transformed.pose.position.y,
+                transformed.pose.position.z
+            ])
+            self.tcp_frame = 'world'  # Now it's in camera frame
+
+            if self.position is None:
+                self.position = np.copy(self.tcp_pos)
+                self.get_logger().info(f"Marker spawned at TCP position: {self.position}")
+
+
+        except Exception as e:
+            self.get_logger().warn(f"TF transform failed: {e}")
+            self.tcp_pos = None
+        '''
 
     def cb_jaw(self, msg):
         self.jaw_position = msg.position[0]
@@ -69,10 +109,12 @@ class InteractiveMarker(Node):
 
 
     def timer_callback(self):
+        if self.position is None or self.tcp_pos is None or self.jaw_position is None:
+            return
+
         if self.tcp_pos is None or self.jaw_position is None or self.tcp_frame is None:
             return
         
-        # Do nothing
         if self.tcp_pos is None or self.jaw_position is None:
             return
         
@@ -101,8 +143,8 @@ class InteractiveMarker(Node):
 
         
         marker = Marker()
-        marker.header.frame_id = 'PSM1_base'
-        #marker.header.frame_id = 'camera'
+        #marker.header.frame_id = 'PSM1_base'
+        marker.header.frame_id = 'camera'
         #marker.header.frame_id = self.tcp_frame
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = 'dvrk_viz'

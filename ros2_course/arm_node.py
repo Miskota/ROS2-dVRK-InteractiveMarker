@@ -156,7 +156,6 @@ class RobotArm(Node):
 
         while self.measured_jaw is None and rclpy.ok():
             self.get_logger().info('Waiting for pose')
-            print('Asd')
             #rclpy.spin_once(self)
         
         angle_curr = self.measured_jaw.position[0]
@@ -197,9 +196,9 @@ class RobotArm(Node):
         r_des = np.array(target)
 
         d = np.linalg.norm(r_des - r_curr)
-        if d < 1e-4:
-            self.get_logger().info('Target position is too close, skipping motion.')
-            return
+        #if d < 1e-4:
+        #    self.get_logger().info('Target position is too close, skipping motion.')
+        #    return
 
         T = d / v
         N = int(np.floor(T / dt))
